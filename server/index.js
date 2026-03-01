@@ -140,10 +140,14 @@ process.on('uncaughtException', (error) => {
 // Start server
 const PORT = process.env.PORT || 5000;
 
+// Check if running in Vercel serverless environment
+const IS_VERCEL = !!process.env.VERCEL;
+
 async function startServer() {
   try {
     console.log('🚀 Starting DrawBattle Server...');
     console.log('📊 Database Mode:', process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite');
+    console.log('🌍 Environment:', IS_VERCEL ? 'Vercel Serverless' : 'Local/Self-hosted');
     
     // Initialize database tables
     if (typeof db.initializeDatabase === 'function') {
@@ -152,23 +156,25 @@ async function startServer() {
     
     console.log('✅ Database initialized successfully');
     
-    server.listen(PORT, () => {
-      console.log(`\n  🎨 DrawBattle Server running at:`);
-      console.log(`  → http://localhost:${PORT}`);
-      console.log(`  🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`  🔐 Rate limiting: Enabled`);
-      console.log(`  💾 Database: ${process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite'}\n`);
-    });
+    // For local/self-hosted deployment, start the HTTP server
+    if (!IS_VERCEL) {
+      server.listen(PORT, () => {
+        console.log(`\n  🎨 DrawBattle Server running at:`);
+        console.log(`  → http://localhost:${PORT}`);
+        console.log(`  🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`  🔐 Rate limiting: Enabled`);
+        console.log(`  💾 Database: ${process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite'}\n`);
+      });
+    } else {
+      console.log('✅ Running in Vercel serverless mode (no HTTP server needed)');
+    }
 
   } catch (error) {
     console.error('❌ Failed to start server:', error.message);
     console.error(error);
     
-    // In Vercel, don't exit - try to recover
-    if (process.env.VERCEL) {
-      console.warn('⚠️ Running on Vercel, continuing despite error...');
-      server.listen(PORT);
-    } else {
+    // In Vercel, don't exit - the function will be retried
+    if (!IS_VERCEL) {
       process.exit(1);
     }
   }
@@ -177,4 +183,5 @@ async function startServer() {
 // ✅ Start the server
 startServer();
 
+// Export app for Vercel serverless + local server support
 module.exports = { app, server, io };

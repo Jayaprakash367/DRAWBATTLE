@@ -2,45 +2,87 @@ const path = require('path');
 let db;
 const USE_POSTGRES = !!process.env.DATABASE_URL;
 
+console.log('🔧 Database Config:', USE_POSTGRES ? 'PostgreSQL' : 'SQLite');
+
 if (USE_POSTGRES) {
   // PostgreSQL for production (Vercel, Railway, etc.)
-  const { Pool } = require('pg');
-  db = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
-  });
-  
-  console.log('🔌 Connecting to PostgreSQL...');
-  
-  // Wrap pool for compatibility
-  db._isPostgres = true;
-  db.prepare = (sql) => ({
-    run: (...params) => db.query(sql, params),
-    get: (...params) => db.query(sql, params),
-    all: (...params) => db.query(sql, params)
-  });
-  
-  db.exec = (sql) => db.query(sql).catch(err => 
-    console.warn('⚠️ Query warning:', err.message)
-  );
+  try {
+    const { Pool } = require('pg');
+    db = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      // Serverless connection pooling
+      max: 1,  // Keep only 1 connection in Vercel
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+    });
+    
+    console.log('✅ PostgreSQL Pool created');
+    
+    // Wrap pool for compatibility
+    db._isPostgres = true;
+    db.prepare = (sql) => ({
+      run: (...params) => {
+        try {
+          return db.query(sql, params);
+        } catch (err) {
+          console.error('❌ DB Query Error:', err);
+          throw err;
+        }
+      },
+      get: (...params) => db.query(sql, params),
+      all: (...params) => db.query(sql, params)
+    });
+    
+    db.exec = async (sql) => {
+      try {
+        await db.query(sql);
+      } catch (err) {
+        if (!err.message.includes('already exists')) {
+          console.warn('⚠️ Query warning:', err.message);
+        }
+      }
+    };
+
+  } catch (error) {
+    console.error('❌ PostgreSQL initialization error:', error.message);
+  }
 } else {
   // SQLite for local development
-  const Database = require('better-sqlite3');
-  const dbPath = path.join(__dirname, '../data/drawbattle.db');
-  db = new Database(dbPath);
-  db.pragma('foreign_keys = ON');
-  db._isPostgres = false;
-  
-  console.log('🗄️ Using SQLite database at:', dbPath);
+  try {
+    const Database = require('better-sqlite3');
+    const dbPath = path.join(__dirname, '../data/drawbattle.db');
+    db = new Database(dbPath);
+    db.pragma('foreign_keys = ON');
+    db._isPostgres = false;
+    
+    console.log('✅ SQLite initialized at:', dbPath);
+  } catch (error) {
+    console.error('❌ SQLite error:', error.message);
+    // Create a mock db object so app doesn't crash
+    db = {
+      _isPostgres: false,
+      prepare: () => ({ run: () => null, get: () => null, all: () => [] }),
+      exec: () => null
+    };
+  }
 }
 
-// Initialize tables
+// Initialize tables (non-blocking)
 async function initializeDatabase() {
+  if (!db) {
+    console.warn('⚠️ Database not available, skipping table creation');
+    return;
+  }
+
   try {
-    console.log('📦 Initializing database tables...');
-    
     if (USE_POSTGRES) {
       const client = await db.connect();
+      if (!client) {
+        console.warn('⚠️ Could not get PostgreSQL client');
+        return;
+      }
+      
       try {
         await client.query(`
           CREATE TABLE IF NOT EXISTS users (
@@ -57,39 +99,15 @@ async function initializeDatabase() {
           );
         `);
         
-        await client.query(`
-          CREATE TABLE IF NOT EXISTS games (
-            id SERIAL PRIMARY KEY,
-            player1Id INTEGER,
-            player2Id INTEGER,
-            winnerUserId INTEGER,
-            gameType TEXT DEFAULT 'solo',
-            rounds INTEGER DEFAULT 1,
-            totalDuration INTEGER,
-            result TEXT DEFAULT 'pending',
-            gameData TEXT,
-            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          );
-        `);
-        
-        await client.query(`
-          CREATE TABLE IF NOT EXISTS leaderboard_cache (
-            userId INTEGER PRIMARY KEY,
-            username TEXT NOT NULL,
-            rank INTEGER,
-            score INTEGER,
-            gamesPlayed INTEGER,
-            gamesWon INTEGER,
-            winRate REAL,
-            updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          );
-        `);
-        
-        console.log('✅ PostgreSQL tables initialized');
+        console.log('✅ PostgreSQL tables created');
+      } catch (err) {
+        if (!err.message.includes('already exists')) {
+          console.warn('⚠️ Table creation warning:', err.message);
+        }
       } finally {
         client.release();
       }
-    } else {
+    } else if (db.exec) {
       db.exec(`
         CREATE TABLE IF NOT EXISTS users (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -105,42 +123,17 @@ async function initializeDatabase() {
         );
       `);
       
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS games (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          player1Id INTEGER,
-          player2Id INTEGER,
-          winnerUserId INTEGER,
-          gameType TEXT DEFAULT 'solo',
-          rounds INTEGER DEFAULT 1,
-          totalDuration INTEGER,
-          result TEXT DEFAULT 'pending',
-          gameData TEXT,
-          createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-      
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS leaderboard_cache (
-          userId INTEGER PRIMARY KEY,
-          username TEXT NOT NULL,
-          rank INTEGER,
-          score INTEGER,
-          gamesPlayed INTEGER,
-          gamesWon INTEGER,
-          winRate REAL,
-          updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-      
-      console.log('✅ SQLite tables initialized');
+      console.log('✅ SQLite tables created');
     }
   } catch (err) {
-    console.error('❌ Database error:', err.message);
+    console.warn('⚠️ Database initialization warning:', err.message);
+    // Don't crash on DB init errors
   }
 }
 
-// Initialize on startup
-initializeDatabase();
-
-module.exports = { db, initializeDatabase };
+// Export with sync wrapper
+module.exports = { 
+  db, 
+  initializeDatabase,
+  isPostgres: USE_POSTGRES
+};
