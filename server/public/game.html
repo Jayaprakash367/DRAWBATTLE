@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DrawBattle - Game Room</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
+</head>
+<body>
+  <!-- Background Effects -->
+  <div class="bg-effects">
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+  </div>
+
+  <!-- Game Page -->
+  <div class="game-page">
+
+    <!-- Top Bar -->
+    <div class="game-topbar">
+      <div class="topbar-left">
+        <button class="btn btn-ghost btn-sm" onclick="leaveGame()" title="Leave Game">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="19" y1="12" x2="5" y2="12"/>
+            <polyline points="12 19 5 12 12 5"/>
+          </svg>
+          <span class="hide-mobile">Leave</span>
+        </button>
+        <span class="topbar-badge" id="roundBadge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/></svg>
+          Round <span id="roundNum">0</span>/<span id="maxRound">3</span>
+        </span>
+      </div>
+      <div class="topbar-center">
+        <div id="wordArea">
+          <span class="topbar-badge text-sm" id="statusBadge">Waiting for players...</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span class="topbar-badge timer" id="timerBadge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span id="timerText">60</span>
+        </span>
+        <span class="topbar-badge cursor-pointer" id="roomCode" title="Click to copy room code" onclick="copyRoomCode()">
+          📋 <span id="roomCodeText">----</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Game Body -->
+    <div class="game-body">
+
+      <!-- Player Panel -->
+      <div class="player-panel">
+        <div class="player-list-container glass-sm">
+          <div class="player-list-title">
+            <span class="dot"></span>
+            Players (<span id="playerCount">0</span>)
+          </div>
+          <div class="player-list" id="playerList">
+            <!-- Filled by JS -->
+          </div>
+        </div>
+        <!-- Start Game Button (visible to room creator when waiting) -->
+        <button class="btn btn-success start-btn hidden" id="startGameBtn" onclick="startGame()">
+          🚀 Start Game
+        </button>
+      </div>
+
+      <!-- Canvas Area -->
+      <div class="canvas-area">
+        <div class="canvas-wrapper" id="canvasWrapper">
+          <canvas id="game-canvas"></canvas>
+          <!-- Overlay shown when not drawing or when waiting -->
+          <div class="canvas-overlay" id="canvasOverlay">
+            <div class="canvas-overlay-text">
+              <h3 id="overlayTitle">Waiting for players…</h3>
+              <p id="overlaySubtitle">Need at least 2 players to start</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Drawing Toolbar (only visible when drawing) -->
+        <div class="toolbar glass-sm hidden" id="drawToolbar">
+          <!-- Colors -->
+          <div class="toolbar-section" id="colorPalette">
+            <!-- filled by JS -->
+          </div>
+          <div class="toolbar-divider"></div>
+          <!-- Brush Sizes -->
+          <div class="toolbar-section" id="brushSizes">
+            <!-- filled by JS -->
+          </div>
+          <div class="toolbar-divider"></div>
+          <!-- Tools -->
+          <div class="toolbar-section">
+            <button class="tool-btn active" id="penTool" onclick="selectTool('pen')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+              Pen
+            </button>
+            <button class="tool-btn" id="eraserTool" onclick="selectTool('eraser')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H7L3 16a1 1 0 010-1.41l9.59-9.59a2 2 0 012.82 0L21 10.59a2 2 0 010 2.82L13 21"/></svg>
+              Eraser
+            </button>
+            <button class="tool-btn" id="fillTool" onclick="fillCanvas()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+              Fill
+            </button>
+            <button class="tool-btn clear-btn" onclick="clearCanvasAction()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              Clear
+            </button>
+            <button class="tool-btn" id="undoTool" onclick="undoCanvas()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 100-6.36L1 10"/></svg>
+              Undo
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat Panel -->
+      <div class="chat-panel">
+        <div class="chat-container glass-sm">
+          <div class="chat-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <h4>Chat & Guesses</h4>
+            <span class="msg-count" id="msgCount">0</span>
+          </div>
+          <div class="chat-messages" id="chatMessages">
+            <div class="chat-msg system">Welcome to DrawBattle! 🎨</div>
+          </div>
+          <div class="chat-input-row">
+            <input type="text" class="input" id="chatInput" placeholder="Type your guess..." maxlength="100" onkeydown="if(event.key==='Enter')sendGuess();" autocomplete="off">
+            <button class="chat-send-btn" onclick="sendGuess()" title="Send message" aria-label="Send message">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Score Overlay (end of game) -->
+  <div class="score-overlay hidden" id="scoreOverlay">
+    <div class="score-card glass">
+      <h2 class="gradient-text font-display" id="scoreTitle">Game Over!</h2>
+      <p class="winner-text" id="winnerText">Winner goes here</p>
+      <div class="score-list" id="scoreList">
+        <!-- Filled by JS -->
+      </div>
+      <div class="score-actions">
+        <button class="btn btn-outline btn-lg" onclick="leaveGame()">Leave</button>
+        <button class="btn btn-glow btn-lg" onclick="playAgain()">Play Again</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Turn Result Overlay -->
+  <div class="score-overlay hidden" id="turnOverlay">
+    <div class="score-card glass turn-result-card">
+      <h2 class="font-display turn-result-title" id="turnResultTitle">Time's Up!</h2>
+      <p class="turn-result-word" id="turnResultWord">WORD</p>
+      <p class="winner-text" id="turnResultText">The word was revealed</p>
+    </div>
+  </div>
+
+  <!-- Word Choice Overlay (for drawer) -->
+  <div class="score-overlay hidden" id="wordChoiceOverlay">
+    <div class="score-card glass word-choice-card">
+      <h2 class="gradient-text font-display word-choice-title">Choose a Word</h2>
+      <p class="winner-text">Pick one word to draw</p>
+      <div id="wordChoiceList" class="word-choice-list"></div>
+    </div>
+  </div>
+
+  <!-- Socket.io client from CDN (same server) -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/game.js"></script>
+</body>
+</html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DrawBattle - Lobby</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
+</head>
+<body>
+  <!-- Background Effects -->
+  <div class="bg-effects">
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+  </div>
+  <div class="bg-grid"></div>
+
+  <!-- Home Page -->
+  <div class="page-container home-page">
+    <div class="container">
+
+      <!-- Header -->
+      <header class="home-header">
+        <div class="home-header-left">
+          <span class="home-header-logo gradient-text font-display">DRAWBATTLE</span>
+        </div>
+        <div class="home-header-right">
+          <div class="user-badge glass-sm" id="userBadge">
+            <div class="user-avatar" id="headerAvatar">?</div>
+            <span id="headerUsername" class="header-username">Player</span>
+          </div>
+          <button class="btn btn-ghost" onclick="handleLogout()" title="Sign Out">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Grid -->
+      <div class="home-grid">
+        <!-- Main Section -->
+        <div>
+          <!-- Play Section -->
+          <div class="play-section glass">
+            <div class="section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span>Quick Play</span>
+            </div>
+            <div class="play-cards">
+              <div class="play-card" onclick="createRoom()">
+                <div class="play-card-icon purple">🎮</div>
+                <h3>Create Room</h3>
+                <p>Start a new game and invite friends</p>
+              </div>
+              <div class="play-card" onclick="window.location.href='/solo.html'">
+                <div class="play-card-icon green">🤖</div>
+                <h3>Solo Draw</h3>
+                <p>Draw anything and AI will guess it</p>
+              </div>
+              <div class="play-card" id="joinCard">
+                <div class="play-card-icon cyan">🔗</div>
+                <h3>Join Room</h3>
+                <p>Enter a room code to join</p>
+                <div class="join-input-row">
+                  <input type="text" class="input" id="joinCodeInput" placeholder="ROOM CODE" maxlength="36" onkeydown="if(event.key==='Enter'){joinByCode();}">
+                  <button class="btn btn-primary btn-sm" onclick="joinByCode()" title="Join room" aria-label="Join room">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Available Rooms -->
+            <div class="rooms-header">
+              <h4>Available Rooms</h4>
+              <button class="btn btn-ghost btn-sm" onclick="loadRooms()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="23 4 23 10 17 10"/>
+                  <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+                </svg>
+                Refresh
+              </button>
+            </div>
+            <div class="rooms-list" id="roomsList">
+              <div class="rooms-empty" id="roomsEmpty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="8" y1="15" x2="16" y2="15"/>
+                  <line x1="9" y1="9" x2="9.01" y2="9"/>
+                  <line x1="15" y1="9" x2="15.01" y2="9"/>
+                </svg>
+                <p>No rooms available</p>
+                <p class="text-xs text-muted">Create one to get started!</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- How to Play -->
+          <div class="howto-card glass">
+            <div class="section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span>How to Play</span>
+            </div>
+            <div class="howto-list">
+              <div class="howto-step">
+                <div class="howto-step-num">1</div>
+                <p>Create a room or join an existing one with friends</p>
+              </div>
+              <div class="howto-step">
+                <div class="howto-step-num">2</div>
+                <p>Take turns drawing the secret word on the canvas</p>
+              </div>
+              <div class="howto-step">
+                <div class="howto-step-num">3</div>
+                <p>Other players guess the word in the chat box</p>
+              </div>
+              <div class="howto-step">
+                <div class="howto-step-num">4</div>
+                <p>Earn points for correct guesses — faster guesses get more points!</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar-section">
+          <!-- Profile -->
+          <div class="profile-card glass">
+            <div class="section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4-4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span>Profile</span>
+            </div>
+            <div class="profile-card-header">
+              <div class="user-avatar user-avatar-lg" id="profileAvatar">?</div>
+              <div class="profile-card-info">
+                <h3 id="profileName">Player</h3>
+                <p id="profileJoined">Welcome!</p>
+              </div>
+            </div>
+            <div class="profile-stats">
+              <div class="profile-stat">
+                <div class="stat-value purple" id="statScore">0</div>
+                <div class="stat-label">Total Score</div>
+              </div>
+              <div class="profile-stat">
+                <div class="stat-value green" id="statWins">0</div>
+                <div class="stat-label">Games Won</div>
+              </div>
+              <div class="profile-stat">
+                <div class="stat-value text-cyan" id="statPlayed">0</div>
+                <div class="stat-label">Played</div>
+              </div>
+              <div class="profile-stat">
+                <div class="stat-value text-yellow" id="statWinRate">0%</div>
+                <div class="stat-label">Win Rate</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Leaderboard -->
+          <div class="leaderboard-card glass">
+            <div class="section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <span>Leaderboard</span>
+            </div>
+            <div class="leaderboard-list" id="leaderboardList">
+              <p class="text-muted text-sm leaderboard-loading">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Room Modal -->
+  <div class="score-overlay hidden" id="createRoomModal">
+      <div class="score-card glass modal-card">
+      <h2 class="gradient-text font-display modal-title">Create Room</h2>
+      <div class="auth-form">
+        <div class="input-group">
+          <label for="roomMaxPlayers">Max Players</label>
+          <input type="number" class="input" id="roomMaxPlayers" value="8" min="2" max="12">
+        </div>
+        <div class="input-group">
+          <label for="roomMaxRounds">Max Rounds</label>
+          <input type="number" class="input" id="roomMaxRounds" value="3" min="1" max="10">
+        </div>
+        <div class="input-group">
+          <label for="roomDrawTime">Draw Time (seconds)</label>
+          <input type="number" class="input" id="roomDrawTime" value="60" min="30" max="120" step="10">
+        </div>
+        <div class="score-actions">
+          <button class="btn btn-outline" onclick="closeCreateModal()">Cancel</button>
+          <button class="btn btn-glow" id="createRoomBtn" onclick="submitCreateRoom()">Create</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
