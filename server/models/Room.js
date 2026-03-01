@@ -3,6 +3,12 @@ const { db } = require('../config/database');
 class Room {
   static create(roomId, roomData) {
     try {
+      if (db._isPostgres) {
+        // PostgreSQL: needs async handling
+        console.warn('⚠️ Room.create() with PostgreSQL');
+        return this.findByRoomId(roomId);
+      }
+      
       const stmt = db.prepare(`
         INSERT INTO rooms (roomId, name, maxPlayers, maxRounds, drawTime, status, creatorId)
         VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -20,23 +26,34 @@ class Room {
       
       return this.findByRoomId(roomId);
     } catch (error) {
-      console.error('Error creating room:', error);
+      console.error('❌ Error creating room:', error);
       throw error;
     }
   }
 
   static findByRoomId(roomId) {
     try {
+      if (db._isPostgres) {
+        // For PostgreSQL, this would need to be async,
+        // but since rooms are managed in-memory via Socket.io,
+        // this method is rarely used
+        console.warn('⚠️ findByRoomId with PostgreSQL - rooms should be in-memory');
+        return null;
+      }
       const stmt = db.prepare('SELECT * FROM rooms WHERE roomId = ?');
       return stmt.get(roomId);
     } catch (error) {
-      console.error('Error finding room:', error);
+      console.error('❌ Error finding room:', error);
       return null;
     }
   }
 
   static getAllRooms() {
     try {
+      if (db._isPostgres) {
+        console.warn('⚠️ getAllRooms with PostgreSQL - using in-memory rooms instead');
+        return [];
+      }
       const stmt = db.prepare(`
         SELECT * FROM rooms 
         WHERE status IN ('waiting', 'playing')
@@ -45,7 +62,7 @@ class Room {
       `);
       return stmt.all() || [];
     } catch (error) {
-      console.error('Error getting all rooms:', error);
+      console.error('❌ Error getting all rooms:', error);
       return [];
     }
   }
@@ -113,28 +130,32 @@ class Room {
   }
 }
 
-// Create rooms table if it doesn't exist
-try {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS rooms (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      roomId TEXT UNIQUE NOT NULL,
-      name TEXT DEFAULT 'Game Room',
-      maxPlayers INTEGER DEFAULT 8,
-      maxRounds INTEGER DEFAULT 3,
-      drawTime INTEGER DEFAULT 60,
-      round INTEGER DEFAULT 0,
-      currentDrawer TEXT,
-      currentWord TEXT,
-      status TEXT DEFAULT 'waiting',
-      creatorId INTEGER,
-      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (creatorId) REFERENCES users(id)
-    );
-  `);
-} catch (err) {
-  // Table already exists
+// Create rooms table if it doesn't exist (SQLite only)
+// PostgreSQL tables are created in database.js initializeDatabase()
+if (!db._isPostgres) {
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS rooms (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        roomId TEXT UNIQUE NOT NULL,
+        name TEXT DEFAULT 'Game Room',
+        maxPlayers INTEGER DEFAULT 8,
+        maxRounds INTEGER DEFAULT 3,
+        drawTime INTEGER DEFAULT 60,
+        round INTEGER DEFAULT 0,
+        currentDrawer TEXT,
+        currentWord TEXT,
+        status TEXT DEFAULT 'waiting',
+        creatorId INTEGER,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (creatorId) REFERENCES users(id)
+      );
+    `);
+  } catch (err) {
+    // Table already exists
+    console.warn('⚠️ Rooms table probably already exists');
+  }
 }
 
 module.exports = Room;
