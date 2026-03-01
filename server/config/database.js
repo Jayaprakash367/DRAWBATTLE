@@ -1,97 +1,146 @@
-const Database = require('better-sqlite3');
 const path = require('path');
+let db;
+const USE_POSTGRES = !!process.env.DATABASE_URL;
 
-// Create database file in data directory
-const dbPath = path.join(__dirname, '../data/drawbattle.db');
-const db = new Database(dbPath);
-
-// Enable foreign keys
-db.pragma('foreign_keys = ON');
-
-// Initialize tables
-function initializeDatabase() {
-  // Users table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL COLLATE NOCASE,
-      password TEXT NOT NULL,
-      avatar TEXT DEFAULT 'default',
-      score INTEGER DEFAULT 0,
-      gamesPlayed INTEGER DEFAULT 0,
-      gamesWon INTEGER DEFAULT 0,
-      totalDrawTime INTEGER DEFAULT 0,
-      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-
-  // Games table - to track game history
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS games (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      player1Id INTEGER NOT NULL,
-      player2Id INTEGER,
-      winnerUserId INTEGER,
-      gameType TEXT DEFAULT 'solo',
-      rounds INTEGER DEFAULT 1,
-      totalDuration INTEGER,
-      result TEXT DEFAULT 'pending',
-      gameData TEXT,
-      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (player1Id) REFERENCES users(id),
-      FOREIGN KEY (player2Id) REFERENCES users(id),
-      FOREIGN KEY (winnerUserId) REFERENCES users(id)
-    );
-  `);
-
-  // Leaderboard table (materialized view for performance)
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS leaderboard_cache (
-      userId INTEGER PRIMARY KEY,
-      username TEXT NOT NULL,
-      rank INTEGER,
-      score INTEGER,
-      gamesPlayed INTEGER,
-      gamesWon INTEGER,
-      winRate REAL,
-      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (userId) REFERENCES users(id)
-    );
-  `);
-
-  console.log('✅ Database tables initialized successfully');
+if (USE_POSTGRES) {
+  // PostgreSQL for production (Vercel, Railway, etc.)
+  const { Pool } = require('pg');
+  db = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  });
+  
+  console.log('🔌 Connecting to PostgreSQL...');
+  
+  // Wrap pool for compatibility
+  db._isPostgres = true;
+  db.prepare = (sql) => ({
+    run: (...params) => db.query(sql, params),
+    get: (...params) => db.query(sql, params),
+    all: (...params) => db.query(sql, params)
+  });
+  
+  db.exec = (sql) => db.query(sql).catch(err => 
+    console.warn('⚠️ Query warning:', err.message)
+  );
+} else {
+  // SQLite for local development
+  const Database = require('better-sqlite3');
+  const dbPath = path.join(__dirname, '../data/drawbattle.db');
+  db = new Database(dbPath);
+  db.pragma('foreign_keys = ON');
+  db._isPostgres = false;
+  
+  console.log('🗄️ Using SQLite database at:', dbPath);
 }
 
-function updateLeaderboard() {
+// Initialize tables
+async function initializeDatabase() {
   try {
-    const updateStmt = db.prepare(`
-      INSERT INTO leaderboard_cache (userId, username, rank, score, gamesPlayed, gamesWon, winRate)
-      SELECT 
-        u.id,
-        u.username,
-        ROW_NUMBER() OVER (ORDER BY u.score DESC, u.gamesWon DESC) as rank,
-        u.score,
-        u.gamesPlayed,
-        u.gamesWon,
-        CASE WHEN u.gamesPlayed > 0 THEN CAST(u.gamesWon AS REAL) / u.gamesPlayed ELSE 0 END as winRate
-      FROM users u
-      ON CONFLICT(userId) DO UPDATE SET
-        rank = excluded.rank,
-        score = excluded.score,
-        gamesPlayed = excluded.gamesPlayed,
-        gamesWon = excluded.gamesWon,
-        winRate = excluded.winRate,
-        updatedAt = CURRENT_TIMESTAMP
-    `);
+    console.log('📦 Initializing database tables...');
     
-    updateStmt.run();
-  } catch (error) {
-    console.error('Error updating leaderboard:', error);
+    if (USE_POSTGRES) {
+      const client = await db.connect();
+      try {
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            avatar TEXT DEFAULT 'default',
+            score INTEGER DEFAULT 0,
+            gamesPlayed INTEGER DEFAULT 0,
+            gamesWon INTEGER DEFAULT 0,
+            totalDrawTime INTEGER DEFAULT 0,
+            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+        
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS games (
+            id SERIAL PRIMARY KEY,
+            player1Id INTEGER,
+            player2Id INTEGER,
+            winnerUserId INTEGER,
+            gameType TEXT DEFAULT 'solo',
+            rounds INTEGER DEFAULT 1,
+            totalDuration INTEGER,
+            result TEXT DEFAULT 'pending',
+            gameData TEXT,
+            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+        
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS leaderboard_cache (
+            userId INTEGER PRIMARY KEY,
+            username TEXT NOT NULL,
+            rank INTEGER,
+            score INTEGER,
+            gamesPlayed INTEGER,
+            gamesWon INTEGER,
+            winRate REAL,
+            updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+        
+        console.log('✅ PostgreSQL tables initialized');
+      } finally {
+        client.release();
+      }
+    } else {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT UNIQUE NOT NULL,
+          password TEXT NOT NULL,
+          avatar TEXT DEFAULT 'default',
+          score INTEGER DEFAULT 0,
+          gamesPlayed INTEGER DEFAULT 0,
+          gamesWon INTEGER DEFAULT 0,
+          totalDrawTime INTEGER DEFAULT 0,
+          createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS games (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          player1Id INTEGER,
+          player2Id INTEGER,
+          winnerUserId INTEGER,
+          gameType TEXT DEFAULT 'solo',
+          rounds INTEGER DEFAULT 1,
+          totalDuration INTEGER,
+          result TEXT DEFAULT 'pending',
+          gameData TEXT,
+          createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS leaderboard_cache (
+          userId INTEGER PRIMARY KEY,
+          username TEXT NOT NULL,
+          rank INTEGER,
+          score INTEGER,
+          gamesPlayed INTEGER,
+          gamesWon INTEGER,
+          winRate REAL,
+          updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      
+      console.log('✅ SQLite tables initialized');
+    }
+  } catch (err) {
+    console.error('❌ Database error:', err.message);
   }
 }
 
 // Initialize on startup
 initializeDatabase();
 
-module.exports = { db, updateLeaderboard };
+module.exports = { db, initializeDatabase };
