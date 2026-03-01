@@ -36,35 +36,35 @@ Built with **pure HTML/CSS/JavaScript** (no frameworks) and Node.js/Express back
 ```
 Drawing/
 ├── server/
-│   ├── public/                 # Static HTML/CSS/JS (NEW)
-│   │   ├── index.html         # Auth page (login/register/guest)
-│   │   ├── home.html          # Lobby & room list
-│   │   ├── game.html          # Game room with canvas
+│   ├── public/                 # Static HTML/CSS/JS
+│   │   ├── html/               # HTML pages (NEW FOLDER)
+│   │   │   ├── index.html      # Auth page (login/register/guest)
+│   │   │   ├── home.html       # Lobby & room list
+│   │   │   ├── game.html       # Game room with canvas
+│   │   │   └── solo.html       # Solo draw mode with AI
 │   │   ├── css/
-│   │   │   └── style.css      # Complete futuristic theme
+│   │   │   └── style.css       # Complete futuristic theme
 │   │   └── js/
-│   │       ├── auth.js        # Auth logic
-│   │       ├── app.js         # Lobby logic
-│   │       └── game.js        # Canvas & game logic
+│   │       ├── auth.js         # Auth logic
+│   │       ├── app.js          # Lobby logic
+│   │       ├── game.js         # Canvas & game logic
+│   │       └── solo.js         # Solo draw with AI
 │   ├── config/
-│   │   └── db.js              # MongoDB connection
+│   │   └── database.js         # SQLite connection
 │   ├── models/
-│   │   ├── User.js            # User schema
-│   │   └── Room.js            # Room schema
+│   │   ├── User.js             # User schema (SQLite)
+│   │   └── Room.js             # Room schema (SQLite)
 │   ├── routes/
-│   │   ├── auth.js            # /api/auth/* endpoints
-│   │   └── rooms.js           # /api/rooms/* endpoints
+│   │   ├── auth.js             # /api/auth/* endpoints
+│   │   └── rooms.js            # /api/rooms/* endpoints
 │   ├── socket/
-│   │   └── gameHandler.js     # Socket.io game logic (541 lines)
-│   ├── middleware/
-│   │   └── auth.js            # JWT middleware
-│   ├── utils/
-│   │   └── words.js           # Word bank & hint generation
-│   ├── index.js               # Express server entry point
+│   │   └── gameHandler.js      # Socket.io game logic
+│   ├── data/
+│   │   └── drawbattle.db       # SQLite database file
+│   ├── index.js                # Express server entry point
 │   ├── package.json
-│   └── .env                   # Config (PORT, MONGODB_URI, JWT_SECRET)
+│   └── .env                    # Config (PORT, JWT_SECRET)
 ├── client/                     # ⚠️ DEPRECATED - Old React app (can be deleted)
-│   └── DEPRECATED.md
 └── README.md
 ```
 
@@ -72,8 +72,7 @@ Drawing/
 
 ### Prerequisites
 - **Node.js** 18+ (for server)
-- **MongoDB** (optional - for user accounts & leaderboard)
-  - If not provided, game still works in memory (guest-only mode)
+- **SQLite** (included with better-sqlite3 - no separate installation needed)
 
 ### Installation
 
@@ -90,15 +89,11 @@ npm install
 Create `server/.env`:
 ```env
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/drawguess
 JWT_SECRET=your_secret_key_here
 NODE_ENV=development
 ```
 
-For **MongoDB Atlas** (cloud):
-```env
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/drawguess
-```
+The SQLite database will be automatically created at `server/data/drawbattle.db` on first run.
 
 ### Running
 
@@ -109,7 +104,7 @@ npm start
 
 Server will start at **http://localhost:5000**
 
-**Note**: If MongoDB is unavailable, the server starts anyway but auth (register/login) will fail. Guest mode works fine without DB.
+The SQLite database will be automatically created and initialized on first run.
 
 ## How to Play
 
@@ -259,39 +254,31 @@ GET  /health → {status: "ok", timestamp}
 - Second correct guess: 100 + 40 = **140 pts**
 - Drawer gets: 25 pts per guess
 
-## Database Schema (MongoDB)
+## Database Schema (SQLite)
 
-### User
-```javascript
-{
-  username: String (unique, 3-20 chars),
-  password: String (hashed, 6+ chars),
-  score: Number,
-  gamesPlayed: Number,
-  gamesWon: Number,
-  avatar: String,
-  createdAt: Date
-}
+### User Table
+```sql
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL (hashed),
+  score INTEGER DEFAULT 0,
+  gamesPlayed INTEGER DEFAULT 0,
+  gamesWon INTEGER DEFAULT 0,
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+)
 ```
 
-### Room
-```javascript
-{
-  roomId: String (UUID, unique),
-  name: String,
-  players: [{
-    username, score, isDrawing, hasGuessed, socketId, connected
-  }],
-  currentDrawer: String,
-  currentWord: String,
-  wordHint: String,
-  round: Number,
-  maxRounds: Number,
-  maxPlayers: Number,
-  drawTime: Number,
-  status: String (waiting | playing | finished),
-  createdAt: Date (expired after 1 hour)
-}
+### Room Table
+```sql
+CREATE TABLE rooms (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  roomId TEXT UNIQUE NOT NULL,
+  maxPlayers INTEGER,
+  currentPlayers INTEGER DEFAULT 0,
+  status TEXT DEFAULT 'waiting',
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+)
 ```
 
 ## Troubleshooting
@@ -307,10 +294,10 @@ lsof -i :5000
 kill -9 <PID>
 ```
 
-### MongoDB Connection Fails
-- Server still starts, but auth/leaderboard don't work
-- Guest mode works fine (in-memory storage)
-- Start MongoDB: `mongod` or use MongoDB Compass to connect
+### SQLite Connection Fails
+- Check that `server/data/` directory has write permissions
+- Database file `drawbattle.db` should be auto-created
+- Check server logs for detailed error messages
 
 ### Socket.io Connection Issues
 - Check browser console (F12) for errors

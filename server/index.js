@@ -56,6 +56,20 @@ app.use(express.json({ limit: '10kb' }));
 // Serve static HTML/CSS/JS files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Serve HTML files from html subdirectory
+app.get('/index.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'html', 'index.html'));
+});
+app.get('/home.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'html', 'home.html'));
+});
+app.get('/game.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'html', 'game.html'));
+});
+app.get('/solo.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'html', 'solo.html'));
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
@@ -68,7 +82,7 @@ app.get('/health', (req, res) => {
 // Fallback: serve index.html for unknown routes (not API, not static)
 app.use((req, res, next) => {
   if (req.method === 'GET' && !req.path.startsWith('/api') && !req.path.startsWith('/socket.io')) {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'html', 'index.html'));
   } else {
     next();
   }
