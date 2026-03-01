@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- Background Circle -->
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B9D;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#C44569;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F8B500;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Outer Circle Background -->
+  <circle cx="128" cy="128" r="128" fill="url(#logoGradient)" opacity="0.15"/>
+  <circle cx="128" cy="128" r="120" fill="none" stroke="url(#logoGradient)" stroke-width="2" opacity="0.3"/>
+  
+  <!-- Main Circle -->
+  <circle cx="128" cy="128" r="110" fill="white" filter="url(#shadow)"/>
+  
+  <!-- Paintbrush (Left side) -->
+  <g>
+    <!-- Brush handle -->
+    <rect x="50" y="95" width="12" height="65" rx="6" fill="#8B4513" opacity="0.8"/>
+    
+    <!-- Brush bristles -->
+    <ellipse cx="56" cy="95" rx="10" ry="8" fill="#FF6B9D"/>
+    <path d="M 48 88 L 56 75 L 64 88 Z" fill="#FF6B9D"/>
+    
+    <!-- Paint drops on brush -->
+    <circle cx="52" cy="100" r="3" fill="#C44569"/>
+    <circle cx="60" cy="105" r="2" fill="#F8B500"/>
+  </g>
+  
+  <!-- Pencil (Right side) -->
+  <g>
+    <!-- Pencil body -->
+    <rect x="194" y="85" width="10" height="80" rx="5" fill="#FFD700"/>
+    
+    <!-- Pencil tip -->
+    <polygon points="199,165 194,175 204,175" fill="#D4AF37"/>
+    
+    <!-- Pencil lines (writing effect) -->
+    <path d="M 199 170 Q 180 150 175 140" stroke="#C44569" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <path d="M 199 175 Q 165 155 160 135" stroke="#F8B500" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Battle Lines/Lightning (Center) -->
+  <g stroke="url(#logoGradient)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- First lightning -->
+    <path d="M 110 110 L 115 125 L 108 130 L 115 140 L 110 145" opacity="0.7"/>
+    
+    <!-- Second lightning -->
+    <path d="M 146 110 L 141 125 L 148 130 L 141 140 L 146 145" opacity="0.7"/>
+    
+    <!-- Center spark -->
+    <circle cx="128" cy="128" r="3" fill="url(#logoGradient)"/>
+    <circle cx="128" cy="128" r="6" fill="none" stroke="url(#logoGradient)" stroke-width="1" opacity="0.5"/>
+  </g>
+  
+  <!-- Decorative elements -->
+  <g fill="url(#logoGradient)" opacity="0.4">
+    <!-- Top-left dot -->
+    <circle cx="90" cy="95" r="2"/>
+    <!-- Top-right dot -->
+    <circle cx="166" cy="90" r="2"/>
+    <!-- Bottom-left dot -->
+    <circle cx="85" cy="165" r="2"/>
+    <!-- Bottom-right dot -->
+    <circle cx="170" cy="170" r="2"/>
+  </g>
+  
+  <!-- Inner Ring -->
+  <circle cx="128" cy="128" r="95" fill="none" stroke="url(#logoGradient)" stroke-width="1.5" opacity="0.3" stroke-dasharray="5,5"/>
+</svg>
