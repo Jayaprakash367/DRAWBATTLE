@@ -478,15 +478,10 @@ function endGame(io, roomId) {
   // Update user scores in DB
   Promise.all(
     room.players.map((p) =>
-      User.findOneAndUpdate(
-        { username: p.username },
-        {
-          $inc: {
-            score: p.score,
-            gamesPlayed: 1,
-            ...(p.username === finalScores[0]?.username ? { gamesWon: 1 } : {}),
-          },
-        }
+      User.updateByUsername(
+        p.username,
+        p.score,
+        p.username === finalScores[0]?.username
       ).catch((err) => {
         console.error(`Score update error for ${p.username}:`, err);
       })

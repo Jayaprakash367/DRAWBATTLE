@@ -44,6 +44,31 @@ class User {
     stmt.run(gamesPlayed, gamesWon, score, userId);
   }
 
+  static async updateByUsername(username, scoreIncrease, isWinner = false) {
+    try {
+      const user = await this.findByUsername(username);
+      if (!user) {
+        console.warn(`⚠️ User not found: ${username}`);
+        return null;
+      }
+
+      const stmt = db.prepare(`
+        UPDATE users 
+        SET score = score + ?,
+            gamesPlayed = gamesPlayed + 1,
+            gamesWon = gamesWon + ?,
+            updatedAt = CURRENT_TIMESTAMP
+        WHERE username = ?
+      `);
+      
+      stmt.run(scoreIncrease, isWinner ? 1 : 0, username);
+      return this.findByUsername(username);
+    } catch (err) {
+      console.error(`❌ Error updating user ${username}:`, err);
+      throw err;
+    }
+  }
+
   static async recordGameResult(player1Id, player2Id, winnerUserId, gameType = 'multiplayer') {
     const stmt = db.prepare(`
       INSERT INTO games (player1Id, player2Id, winnerUserId, gameType, result)
@@ -124,7 +149,7 @@ class User {
     const user = await this.findById(userId);
     if (!user) return null;
 
-    const gameHistory = this.getGameHistory(userId, 10);
+    const gameHistory = await this.getGameHistory(userId, 10);
     const leaderboardRank = db.prepare(`
       SELECT COUNT(*) + 1 as rank FROM users 
       WHERE score > (SELECT score FROM users WHERE id = ?)
