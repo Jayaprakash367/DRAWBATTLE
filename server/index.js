@@ -76,37 +76,105 @@ app.use('/api/rooms', roomRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  try {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  } catch (error) {
+    console.error('❌ Health check error:', error);
+    res.status(500).json({ error: 'Health check failed' });
+  }
 });
 
 // Fallback: serve index.html for unknown routes (not API, not static)
 app.use((req, res, next) => {
-  if (req.method === 'GET' && !req.path.startsWith('/api') && !req.path.startsWith('/socket.io')) {
-    res.sendFile(path.join(__dirname, 'public', 'html', 'index.html'));
-  } else {
-    next();
+  try {
+    if (req.method === 'GET' && !req.path.startsWith('/api') && !req.path.startsWith('/socket.io')) {
+      res.sendFile(path.join(__dirname, 'public', 'html', 'index.html'));
+    } else {
+      next();
+    }
+  } catch (error) {
+    console.error('❌ Routing error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Setup websocket handlers
-setupSocket(io);
+// ✅ Global error handling middleware
+app.use((err, req, res, next) => {
+  console.error('❌ Express Error:', {
+    message: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method
+  });
 
-// Start server with SQLite
+  // Don't expose internal error details to clients
+  const statusCode = err.statusCode || err.status || 500;
+  res.status(statusCode).json({
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Setup websocket handlers with error handling
+try {
+  setupSocket(io);
+} catch (error) {
+  console.error('❌ Socket.io setup error:', error);
+}
+
+// ✅ Unhandled promise rejection handler
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't crash the server on unhandled rejections in Vercel
+});
+
+// ✅ Uncaught exception handler
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  // Log but don't crash in production
+  if (process.env.NODE_ENV !== 'production') {
+    process.exit(1);
+  }
+});
+
+// Start server
 const PORT = process.env.PORT || 5000;
 
-try {
-  // Verify database is ready
-  const testQuery = db.prepare('SELECT 1').get();
-  console.log('✅ SQLite database connected successfully');
-  
-  server.listen(PORT, () => {
-    console.log(`\n  🎨 DrawBattle Server running at:`);
-    console.log(`  → http://localhost:${PORT}`);
-    console.log(`  📊 Data stored in: data/drawbattle.db\n`);
-  });
-} catch (err) {
-  console.error('❌ Database error:', err);
-  process.exit(1);
+async function startServer() {
+  try {
+    console.log('🚀 Starting DrawBattle Server...');
+    console.log('📊 Database Mode:', process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite');
+    
+    // Initialize database tables
+    if (typeof db.initializeDatabase === 'function') {
+      await db.initializeDatabase();
+    }
+    
+    console.log('✅ Database initialized successfully');
+    
+    server.listen(PORT, () => {
+      console.log(`\n  🎨 DrawBattle Server running at:`);
+      console.log(`  → http://localhost:${PORT}`);
+      console.log(`  🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`  🔐 Rate limiting: Enabled`);
+      console.log(`  💾 Database: ${process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite'}\n`);
+    });
+
+  } catch (error) {
+    console.error('❌ Failed to start server:', error.message);
+    console.error(error);
+    
+    // In Vercel, don't exit - try to recover
+    if (process.env.VERCEL) {
+      console.warn('⚠️ Running on Vercel, continuing despite error...');
+      server.listen(PORT);
+    } else {
+      process.exit(1);
+    }
+  }
 }
+
+// ✅ Start the server
+startServer();
 
 module.exports = { app, server, io };
