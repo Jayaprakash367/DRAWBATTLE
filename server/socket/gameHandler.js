@@ -475,10 +475,10 @@ function endGame(io, roomId) {
   room.chatMessages.push(sysMsg);
   io.to(roomId).emit('chatMessage', sysMsg);
 
-  // Update user scores in DB (fire and forget)
-  room.players.forEach(async (p) => {
-    try {
-      await User.findOneAndUpdate(
+  // Update user scores in DB
+  Promise.all(
+    room.players.map((p) =>
+      User.findOneAndUpdate(
         { username: p.username },
         {
           $inc: {
@@ -487,10 +487,12 @@ function endGame(io, roomId) {
             ...(p.username === finalScores[0]?.username ? { gamesWon: 1 } : {}),
           },
         }
-      );
-    } catch (err) {
-      console.error('Score update error:', err);
-    }
+      ).catch((err) => {
+        console.error(`Score update error for ${p.username}:`, err);
+      })
+    )
+  ).catch((error) => {
+    console.error('Batch score update error:', error);
   });
 
   // Reset room to waiting after delay
