@@ -19,9 +19,5 @@
       "src": "/(.*)",
       "dest": "server/index.js"
     }
-  ],
-  "env": {
-    "JWT_SECRET": "@jwt_secret",
-    "NODE_ENV": "production"
-  }
+  ]
 }
