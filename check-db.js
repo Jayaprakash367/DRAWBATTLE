@@ -17,12 +17,11 @@ try {
   }
   
   const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
-  console.log(`\n✅ Total Users: ${userCount.count}`);
-  
+  console.log(`\n✅ Total Users: ${userCount.count}`); 
   const gameCount = db.prepare('SELECT COUNT(*) as count FROM games').get();
   console.log(`✅ Total Games Played: ${gameCount.count}`);
-  
   console.log('\n✨ Database is healthy and working correctly!\n');
+  
 } catch (err) {
   console.error('❌ Database error:', err.message);
   process.exit(1);
