@@ -14,7 +14,6 @@ function setupSocket(io) {
       try {
         if (!roomId || !username) return;
         const sanitizedUsername = username.replace(/[<>&"']/g, '');
-
         socket.join(roomId);
         socket.roomId = roomId;
         socket.username = sanitizedUsername;
@@ -36,7 +35,6 @@ function setupSocket(io) {
             chatMessages: [],
           });
         }
-
         const room = rooms.get(roomId);
 
         // Prevent duplicate players
