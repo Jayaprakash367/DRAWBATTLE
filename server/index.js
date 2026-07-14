@@ -24,28 +24,23 @@ const io = new Server(server, {
   pingTimeout: 60000,
   pingInterval: 25000,
 });
-
 // Security middleware
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
 }));
-
 app.use(cors());
-
 // Rate limiting - strict only for auth, relaxed for game endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 50,
   message: { error: 'Too many login attempts, please try again later.' },
 });
-
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 500,
   message: { error: 'Too many requests, please try again later.' },
 });
-
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/', apiLimiter);
