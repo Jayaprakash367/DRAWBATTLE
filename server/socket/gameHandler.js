@@ -4,7 +4,6 @@ const { getRandomWord, getWordChoices, generateHint } = require('../utils/words'
 
 const rooms = new Map(); // In-memory room state for speed
 const timers = new Map();
-
 function setupSocket(io) {
   io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
@@ -17,7 +16,6 @@ function setupSocket(io) {
         socket.join(roomId);
         socket.roomId = roomId;
         socket.username = sanitizedUsername;
-
         // Initialize in-memory room if not exists
         if (!rooms.has(roomId)) {
           rooms.set(roomId, {
@@ -36,7 +34,6 @@ function setupSocket(io) {
           });
         }
         const room = rooms.get(roomId);
-
         // Prevent duplicate players
         const existingIdx = room.players.findIndex(p => p.username === sanitizedUsername);
         if (existingIdx !== -1) {
