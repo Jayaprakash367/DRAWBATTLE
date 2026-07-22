@@ -1,6 +1,5 @@
 async function test() {
   console.log('🧪 Testing Room API...\n');
-  
   try {
     // Create a room
     const createRes = await fetch('http://localhost:5000/api/rooms/create', {
@@ -11,7 +10,7 @@ async function test() {
     const createData = await createRes.json();
     if (!createData.success) throw new Error(createData.error);
     console.log('✅ Room Created:', createData.room.roomId);
-    
+  
     // List rooms
     const listRes = await fetch('http://localhost:5000/api/rooms/list');
     const listData = await listRes.json();
@@ -30,5 +29,4 @@ async function test() {
     process.exit(1);
   }
 }
-
 test();
