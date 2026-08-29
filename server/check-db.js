@@ -1,7 +1,5 @@
 const Database = require('better-sqlite3');
-
 const db = new Database('./data/drawbattle.db');
-
 console.log('\n📊 Database Status:\n');
 
 try {
@@ -18,7 +16,6 @@ try {
   
   const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
   console.log(`\n✅ Total Users: ${userCount.count}`);
-  
   const gameCount = db.prepare('SELECT COUNT(*) as count FROM games').get();
   console.log(`✅ Total Games Played: ${gameCount.count}`);
   
