@@ -22,7 +22,6 @@ async function test() {
     const getData = await getRes.json();
     if (!getData.success) throw new Error(getData.error);
     console.log('✅ Room Details Retrieved:', getData.room.name);
-    
     console.log('\n✨ All Room APIs working correctly!');
   } catch (err) {
     console.error('❌ Error:', err.message);
