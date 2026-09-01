@@ -10,7 +10,7 @@ async function test() {
     const createData = await createRes.json();
     if (!createData.success) throw new Error(createData.error);
     console.log('✅ Room Created:', createData.room.roomId);
-  
+    
     // List rooms
     const listRes = await fetch('http://localhost:5000/api/rooms/list');
     const listData = await listRes.json();
